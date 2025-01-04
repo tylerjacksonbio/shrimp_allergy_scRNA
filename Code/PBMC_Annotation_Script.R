@@ -4,6 +4,7 @@ library(Seurat)
 library(sceasy)
 library(patchwork)
 library(cowplot)
+library(clustree)
 
 # This is the URL for running Azimuth using the web interface - https://app.azimuth.hubmapconsortium.org/app/human-pbmc
 # Load the Harmony object and convert formats
@@ -87,7 +88,41 @@ dev.off()
 
 ##### Reannotating the data using Azimuth predictions and marker genes #####
 # Find clusters at the desired resolution and set up final annotation metadata
-PBMC_filtered_harmony <- FindClusters(PBMC_filtered_harmony, resolution = 0.5)
+PBMC_filtered_harmony <- readRDS('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Test_Script/Final_Data_Upload_Analysis/Merged_adata.rds')
+PBMC_filtered_harmony<-FindNeighbors(PBMC_filtered_harmony, reduction = 'harmony', dims = 1:50)
+PBMC_filtered_harmony<-RunUMAP(PBMC_filtered_harmony, reduction = 'harmony', dims = 1:50, n.neighbors = 15)
+PBMC_filtered_harmony<-RunTSNE(PBMC_filtered_harmony, reduction = 'harmony', dims = 1:50, n.neighbors = 15)
+resolutions <- c(2, 1, 0.8, 0.5, 0.4, 0.3, 0.2, 0.1)
+
+# Apply FindClusters for each resolution
+for (res in resolutions) {
+  PBMC_filtered_harmony <- FindClusters(PBMC_filtered_harmony, resolution = res)
+}
+
+pdf('PBMC_filtered_harmony_clustering.pdf')
+DimPlot(PBMC_filtered_harmony, reduction = 'umap', group.by = 'seurat_clusters')
+DimPlot(PBMC_filtered_harmony, reduction = 'umap', group.by = 'seurat_clusters', label = TRUE) + NoLegend()
+DimPlot(PBMC_filtered_harmony, reduction = 'tsne', group.by = 'seurat_clusters')
+dev.off()
+
+# Set identity and build cluster tree
+Idents(PBMC_filtered_harmony) <- 'Final_annotation_broad'
+PBMC_filtered_harmony <- BuildClusterTree(PBMC_filtered_harmony)
+
+# Extract phylogenetic tree
+myPhyTree <- Tool(object = PBMC_filtered_harmony, slot = "BuildClusterTree")
+
+# Save plots to PDF
+pdf('ClusterTrees_Whole_Data.pdf', height = 12, width = 8)
+clustree(PBMC_filtered_harmony, prefix = "RNA_snn_res.")
+PlotClusterTree(PBMC_filtered_harmony, direction = "rightwards")
+
+pdf('ClusterTrees_Whole_Data_ggtree.pdf')
+ggtree(myPhyTree) + geom_tiplab() + theme_tree() + xlim(NA, 1000)
+dev.off()
+
+# Select resolution of 0.5 for annotation (best res based on dendrogram)
+Idents(PBMC_filtered_harmony) <- 'RNA_snn_res.0.5'
 PBMC_filtered_harmony[["Final_annotation_broad"]] <- Idents(PBMC_filtered_harmony)
 
 # Rename cluster identities with clear labels for final annotation
