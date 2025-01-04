@@ -127,7 +127,7 @@ plot_annotations <- function(object, filename) {
 plot_annotations(PBMC_filtered_harmony, "Final_annotation.pdf")
 
 # Save the annotated object and convert format
-output_path <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/With_ambient_removed/"
+output_path <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Annotated_Data/"
 saveRDS(PBMC_filtered_harmony, file.path(output_path, "Final_annotated_object.rds"))
 sceasy::convertFormat(
   PBMC_filtered_harmony,
@@ -135,55 +135,6 @@ sceasy::convertFormat(
   to = "anndata",
   outFile = file.path(output_path, "Final_annotated_object.h5ad")
 )
-
-# Define constants
-output_path <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/With_ambient_removed/"
-gdt_markers <- c('TRDC', 'CD7', 'CD247', 'GZMA', 'SPON2', 'CTSW', 'KLRD1', 
-                 'CST7', 'HOPX', 'PRF1', 'FGFBP2', 'GZMB', 'CCL5', 'CD3D', 'CD3E')
-
-# Add module score for gamma-delta T-cells and recluster
-PBMC_filtered_harmony <- AddModuleScore(PBMC_filtered_harmony, features = gdt_markers, ctrl = 5, name = "gdt_Module_Score")
-PBMC_filtered_harmony <- FindClusters(PBMC_filtered_harmony, resolution = 2)
-
-# Plot module score results
-pdf(file.path(output_path, "module_score_gdt.pdf"))
-DimPlot(PBMC_filtered_harmony, reduction = "umap", group.by = "seurat_clusters", label = TRUE)
-FeaturePlot(PBMC_filtered_harmony, features = "gdt_Module_Score1", cols = c("lightgrey", "red"), order = TRUE, pt.size = 0.7)
-VlnPlot(PBMC_filtered_harmony, features = "gdt_Module_Score1", assay = "RNA")
-dev.off()
-
-# Subset gamma-delta T-cells based on clusters and module score cutoff
-gdt_clusters <- c("11", "17", "20")
-Gdt_cells <- subset(PBMC_filtered_harmony, seurat_clusters %in% gdt_clusters & gdt_Module_Score1 > 0.5)
-
-# Plot subset results before reclustering
-pdf(file.path(output_path, "Gdt_cell_cluster_subset_before_recluster.pdf"))
-DimPlot(Gdt_cells, reduction = "umap", group.by = "seurat_clusters")
-VlnPlot(Gdt_cells, features = "gdt_Module_Score1", assay = "RNA")
-dev.off()
-
-# Re-run dimensionality reduction and clustering
-Gdt_cells <- RunUMAP(Gdt_cells, reduction = "harmony", dims = 1:50, n.neighbors = 15)
-Gdt_cells <- FindNeighbors(Gdt_cells, reduction = "harmony", dims = 1:50)
-Gdt_cells <- FindClusters(Gdt_cells, resolution = 0.3)
-
-# Plot subset results after reclustering
-pdf(file.path(output_path, "Gdt_cell_cluster_subset_after_recluster.pdf"))
-DimPlot(Gdt_cells, reduction = "umap", group.by = "seurat_clusters")
-dev.off()
-
-# Annotate gamma-delta T-cells in the main dataset
-PBMC_filtered_harmony$Final_annotation <- as.character(PBMC_filtered_harmony$Final_annotation)
-gamma_delta_annotation <- rep("Gamma_delta_T-cells", length(colnames(Gdt_cells)))
-names(gamma_delta_annotation) <- colnames(Gdt_cells)
-PBMC_filtered_harmony$Final_annotation[colnames(Gdt_cells)] <- gamma_delta_annotation
-PBMC_filtered_harmony$Final_annotation <- factor(PBMC_filtered_harmony$Final_annotation)
-
-# Final plot for annotation
-pdf(file.path(output_path, "Final_annotation_NEW.pdf"))
-DimPlot(PBMC_filtered_harmony, group.by = "Final_annotation", reduction = "umap", label = TRUE)
-DimPlot(PBMC_filtered_harmony, group.by = "Final_annotation", reduction = "tsne")
-dev.off()
 
 ##### Save the final annotated object used for downstream analysis #####
 saveRDS(PBMC_filtered_harmony, file.path(output_path, "Merged_adata.rds"))
