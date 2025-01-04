@@ -1,10 +1,11 @@
-##### Annotation using of Whole Data using Azimuth. Gamm-delta T-cell Annotation also Included, Annotated using the Module Score #####
+##### Annotation using of Whole Data using Azimuth. Gamma-delta T-cell Annotation also Included, Annotated using the Module Score #####
 # Importing required libraries
 library(Seurat)
 library(sceasy)
 library(patchwork)
 library(cowplot)
 library(clustree)
+set.seed(42)
 
 # This is the URL for running Azimuth using the web interface - https://app.azimuth.hubmapconsortium.org/app/human-pbmc
 # Load the Harmony object and convert formats
@@ -179,3 +180,189 @@ sceasy::convertFormat(
   to = "anndata",
   outFile = file.path(output_path, "Merged_adata.h5ad")
 )
+
+##### Whole Data Cell Proportion Analysis and Preliminary Gamma-delta T-cell Analysis #####
+##### Whole data cell proportion analysis #####
+# Set working directory and define color palette
+setwd('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/gdT_cell_annotation')
+sample_colors <- c('HC-unstim' = '#9FBDD3', 'HC-stim' = '#5A6EDC', 
+                   'SA-unstim' = '#F6CC93', 'SA-stim' = '#F09924')
+
+# Assign identities
+Idents(PBMC_filtered_harmony) <- PBMC_filtered_harmony@meta.data$orig.ident
+
+# Subset samples and create tables
+samples <- list(
+  HC_unstim = subset(PBMC_filtered_harmony, orig.ident == 'HC-unstim'),
+  HC_stim = subset(PBMC_filtered_harmony, orig.ident == 'HC-stim'),
+  SA_unstim = subset(PBMC_filtered_harmony, orig.ident == 'SA-unstim'),
+  SA_stim = subset(PBMC_filtered_harmony, orig.ident == 'SA-stim')
+)
+
+# Output annotation tables for each sample
+lapply(samples, function(sample) table(sample@meta.data$Final_annotation_broad))
+
+# Plot UMAPs for all samples
+pdf('UMAPS_split_by_sample.pdf')
+for (sample_name in names(samples)) {
+  DimPlot(samples[[sample_name]], reduction = 'umap', group.by = 'orig.ident', 
+          cols = sample_colors[sample_name], pt.size = 0.1) +
+    NoLegend() + ggtitle(sample_name)
+}
+dev.off()
+
+##### Annotating and reclustering the gdT-cells #####
+# Annotating gamma-delta T-cells
+PBMC_filtered_harmony$orig.ident <- factor(PBMC_filtered_harmony$orig.ident, 
+                                           levels = names(sample_colors))
+PBMC_filtered_harmony$group.colors <- sample_colors[as.character(PBMC_filtered_harmony$orig.ident)]
+
+gdt_markers <- c('TRDC','CD7','CD247','GZMA','SPON2','CTSW','KLRD1','CST7','HOPX','PRF1','FGFBP2','GZMB','CCL5','CD3D','CD3E')
+PBMC_filtered_harmony <- AddModuleScore(PBMC_filtered_harmony, features = gdt_markers, ctrl = 5, name = 'gdt_Module_Score')
+PBMC_filtered_harmony <- FindClusters(PBMC_filtered_harmony, resolution = 2)
+
+# Plot the result of the module score
+pdf('module_score_gdt.pdf')
+DimPlot(PBMC_filtered_harmony, reduction = 'umap', group.by = 'seurat_clusters', label = TRUE)
+FeaturePlot(PBMC_filtered_harmony, features = 'gdt_Module_Score1', cols = c('lightgrey', 'red'), order = TRUE , pt.size = .7)
+VlnPlot(PBMC_filtered_harmony, features = 'gdt_Module_Score1', assay = 'RNA')
+dev.off()
+
+# Subset the cells that show a cutoff of 0.5 for the module score
+Idents(PBMC_filtered_harmony) <- PBMC_filtered_harmony@meta.data$seurat_clusters
+Gdt_cells <- subset(PBMC_filtered_harmony, subset = seurat_clusters ==  '11' | seurat_clusters == '17' 
+                    | seurat_clusters == '20')
+
+pdf('Gdt_cell_cluster_subset_before_recluster.pdf')
+DimPlot(Gdt_cells, reduction = 'umap', group.by = 'seurat_clusters')
+VlnPlot(Gdt_cells, features = 'gdt_Module_Score1', assay = 'RNA')
+dev.off()
+
+Gdt_cells
+
+Gdt_cells <- subset(Gdt_cells, subset = gdt_Module_Score1 > 0.5)
+table(Gdt_cells@meta.data$orig.ident)
+
+# We will annotate the clusters that are above the module score cutoff of 0.5 as gdt cells
+# Set annotation column in gdt_cells to "Gamma_delta_T-cells"
+Gdt_cells@meta.data$Final_annotation <- "gdT-cells"
+
+# Create a named vector of annotation column from gdt_cells
+dict_D <- setNames(Gdt_cell@meta.data$Final_annotation_broad, colnames(Gdt_cell_clusters))
+
+# Get a list of Final_annotation from PBMC_Data, check the barcode in dict_D
+new_L <- character(length(PBMC_filtered_harmony))
+new_L
+for (i in 1:ncol(PBMC_filtered_harmony)){
+  barcode <- colnames(PBMC_filtered_harmony)[i]
+  annot <- PBMC_filtered_harmony@meta.data$Final_annotation_broad[i]
+  if (barcode %in% names(dict_D)) new_L[i] <- dict_D[barcode] else new_L[i] <- annot
+}
+
+# Set New_Annotation column in PBMC_Data to new_L
+PBMC_filtered_harmony@meta.data$Final_annotation_broad <- factor(new_L)
+table(PBMC_filtered_harmony@meta.data$Final_annotation_broad)
+
+# Subset gamma-delta T-cells
+Gdt_cell_clusters <- subset(PBMC_filtered_harmony, Final_annotation == 'gd T-cells')
+
+# Visualize gamma-delta T-cells
+pdf('gdT_cells_subset.pdf')
+DimPlot(PBMC_filtered_harmony, group.by = 'Final_annotation')
+dev.off()
+
+pdf('Gdt_cells_before_reclustering.pdf')
+DimPlot(Gdt_cell_clusters, reduction = 'umap', group.by = 'seurat_clusters') +
+  DimPlot(Gdt_cell_clusters, reduction = 'umap', group.by = 'orig.ident', cols = sample_colors)
+dev.off()
+
+# Checking the appropriate number of dimensions
+PBMC_filtered_harmony <- readRDS('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Datasets/Final_Annotated_Data/Final_Data_Upload_Analysis/Merged_adata.rds')
+
+# Set the identity class and subset data
+Idents(PBMC_filtered_harmony) <- 'Final_annotation_broad'
+Gdt_cell_clusters <- subset(PBMC_filtered_harmony, subset = Final_annotation_broad == 'gd T-cells')
+
+# Define a function to process clustering
+process_clustering <- function(object, dims, resolution = 0.3, neighbors = 15) {
+  object <- FindNeighbors(object, reduction = 'harmony', dims = 1:dims)
+  ElbowPlot(object, ndims = dims)
+  object <- RunUMAP(object, reduction = 'harmony', dims = 1:dims, n.neighbors = neighbors)
+  object <- RunTSNE(object, reduction = 'harmony', dims = 1:dims, n.neighbors = neighbors)
+  object <- FindClusters(object, resolution = resolution)
+  return(object)
+}
+
+# Loop through dimensions and process clustering
+dims_list <- c(50, 40, 30, 20, 10)
+for (dims in dims_list) {
+  Gdt_cell_clusters <- process_clustering(Gdt_cell_clusters, dims = dims)
+  
+  # Generate plots and save to PDF
+  pdf(paste0(dims, '_dims_gdt_cell_clustering.pdf'))
+  DimPlot(Gdt_cell_clusters, group.by = 'seurat_clusters', reduction = 'umap') + 
+    ggtitle('Seurat Clusters')
+  DimPlot(Gdt_cell_clusters, group.by = 'Gdt_cluster_subsets', reduction = 'umap') + 
+    ggtitle('gdT Subclusters')
+  DimPlot(Gdt_cell_clusters, group.by = 'orig.ident', cols = sample_colors, reduction = 'umap') + 
+    ggtitle('Sample Group')
+  DimPlot(Gdt_cell_clusters, group.by = 'seurat_clusters', reduction = 'umap', label = FALSE) + 
+    ggtitle('Seurat Clusters') + NoLegend()
+  DimPlot(Gdt_cell_clusters, group.by = 'Gdt_cluster_subsets', reduction = 'umap', label = FALSE) + 
+    ggtitle('gdT Subclusters') + NoLegend()
+  DimPlot(Gdt_cell_clusters, group.by = 'orig.ident', cols = sample_colors, reduction = 'umap', label = FALSE) + 
+    ggtitle('Sample Group') + NoLegend()
+  dev.off()
+}
+
+# Reannotate the seurat clusters
+Gdt_cell_clusters[["Gdt_cluster_subsets"]] <- Idents(Gdt_cell_clusters)
+Idents(Gdt_cell_clusters) <- Gdt_cell_clusters$seurat_clusters
+Gdt_cell_clusters <- RenameIdents(Gdt_cell_clusters, 
+                                  `0` = "gdt_cluster_1", 
+                                  `1` = "gdt_cluster_2", 
+                                  `2` = "gdt_cluster_3")
+
+# Building a dendrogram for clustering in the gdT-cells
+Gdt_cell_clusters <- FindNeighbors(Gdt_cell_clusters, reduction = 'harmony', dims = 1:50)
+ElbowPlot(Gdt_cell_clusters, ndims = 50) 
+Gdt_cell_clusters <- RunUMAP(Gdt_cell_clusters, reduction = 'harmony', dims = 1:50, n.neighbors = 15) 
+Gdt_cell_clusters <- RunTSNE(Gdt_cell_clusters, reduction = 'harmony', dims = 1:50, n.neighbors = 15) 
+
+# Define resolutions to test
+resolutions <- c(2, 1, 0.8, 0.5, 0.4, 0.3, 0.2, 0.1)
+
+# Apply FindClusters for each resolution
+for (res in resolutions) {
+  Gdt_cell_clusters <- FindClusters(Gdt_cell_clusters, resolution = res)
+}
+
+# Set identity and build cluster tree
+Idents(Gdt_cell_clusters) <- 'Gdt_cluster_subsets'
+Gdt_cell_clusters <- BuildClusterTree(Gdt_cell_clusters)
+
+# Extract phylogenetic tree
+myPhyTree <- Tool(object = Gdt_cell_clusters, slot = "BuildClusterTree")
+
+# Save plots to PDF
+pdf('ClusterTrees_gdT_cells.pdf', height = 12, width = 8)
+clustree(Gdt_cell_clusters, prefix = "RNA_snn_res.")
+PlotClusterTree(Gdt_cell_clusters, direction = "rightwards")
+ggtree(myPhyTree) + geom_tiplab() + theme_tree() + xlim(NA, 10)
+dev.off()
+
+# Rename and annotate clusters
+Gdt_cell_clusters[["Gdt_cluster_subsets"]] <- Idents(Gdt_cell_clusters)
+Idents(Gdt_cell_clusters) <- Gdt_cell_clusters$seurat_clusters
+Gdt_cell_clusters <- RenameIdents(Gdt_cell_clusters, `0` = "gdt_cluster_1", 
+                                  `1` = "gdt_cluster_2", `2` = "gdt_cluster_3")
+
+# Visualize gamma-delta T-cell clusters
+pdf('Module_scores_and_gdt_cell_subsets.pdf')
+DimPlot(Gdt_cell_clusters, reduction = 'umap', group.by = 'seurat_clusters', label = TRUE) +
+  DimPlot(Gdt_cell_clusters, reduction = 'umap', group.by = 'Gdt_cluster_subsets', label = TRUE) +
+  FeaturePlot(Gdt_cell_clusters, features = 'gdt_Module_Score1', cols = c('lightgrey', 'red'), 
+              order = TRUE, pt.size = 0.7) +
+  VlnPlot(Gdt_cell_clusters, features = 'gdt_Module_Score1', assay = 'RNA')
+dev.off()
+
