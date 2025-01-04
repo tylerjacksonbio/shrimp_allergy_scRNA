@@ -88,7 +88,7 @@ dev.off()
 ##### Reannotating the data using Azimuth predictions and marker genes #####
 # Find clusters at the desired resolution and set up final annotation metadata
 PBMC_filtered_harmony <- FindClusters(PBMC_filtered_harmony, resolution = 0.5)
-PBMC_filtered_harmony[["Final_annotation"]] <- Idents(PBMC_filtered_harmony)
+PBMC_filtered_harmony[["Final_annotation_broad"]] <- Idents(PBMC_filtered_harmony)
 
 # Rename cluster identities with clear labels for final annotation
 cluster_annotations <- c(
@@ -100,6 +100,17 @@ cluster_annotations <- c(
   "15" = "NK cells"
 )
 PBMC_filtered_harmony <- RenameIdents(PBMC_filtered_harmony, cluster_annotations)
+
+# Intermediate annotations
+PBMC_filtered_harmony[["Final_annotation_intermediate"]] <- Idents(object = PBMC_filtered_harmony)
+Idents(PBMC_filtered_harmony) <- PBMC_filtered_harmony@meta.data$predicted.celltype.l2
+PBMC_filtered_harmony <- RenameIdents(object = PBMC_filtered_harmony, `B intermediate` = "B intermediate", `B memory` = "B memory", `B naive` = "B naive",
+                                      `CD14 Mono` = 'CD14 Mono',`CD16 Mono` = "CD16 Mono", `CD4 CTL` = "CD4 CTL", `CD4 Proliferating` = "CD4 Proliferating",
+                                      `CD4 TCM` = 'CD4 TCM',`CD4 TEM` = "CD4 TEM", `CD8 Naive` = "CD8 Naive", `CD8 TCM` = "CD8 TCM",
+                                      `CD8 TEM` = 'CD8 TEM',`cDC2` = "cDC2", `dnT` = "dnT", `Eryth` = "Eryth",
+                                      `gdT` = "Reann", `dnT` = "dnT", `HSPC` = "HSPC", `ILC` = "ILC", `MAIT` = "MAIT",
+                                      `NK` = "NK", `NK Proliferating` = "NK Proliferating", `NK_CD56bright` = "NK_CD56bright", `Plasmablast` = "Plasmablast", `Platelet` = "Platelet",
+                                      `Treg` = "Treg cells")
 
 # Plot new annotations
 plot_annotations <- function(object, filename) {
