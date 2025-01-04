@@ -92,12 +92,12 @@ PBMC_filtered_harmony[["Final_annotation"]] <- Idents(PBMC_filtered_harmony)
 
 # Rename cluster identities with clear labels for final annotation
 cluster_annotations <- c(
-  "0" = "CD4_T_cells", "1" = "CD4_T_cells", "2" = "CD8_T_cells",
-  "3" = "CD8_T_cells", "4" = "Naive_B_cells", "5" = "NK_cells",
-  "6" = "Memory_B_cells", "7" = "CD8_T_cells", "8" = "Other_T_cells",
-  "9" = "Other_T_cells", "10" = "Treg_cells", "11" = "Other_T_cells",
-  "12" = "Monocytes", "13" = "CD8_T_cells", "14" = "CD4_T_cells",
-  "15" = "NK_cells"
+  "0" = "CD4 T-cells", "1" = "CD4 T-cells", "2" = "CD8 T-cells",
+  "3" = "CD8 T-cells", "4" = "Naive B-cells", "5" = "NK cells",
+  "6" = "Memory/Intermediate B-cells", "7" = "CD8 T-cells", "8" = "Broad cell types",
+  "9" = "Broad cell types", "10" = "Treg cells", "11" = "Broad cell types",
+  "12" = "Monocytes", "13" = "CD8 T-cells", "14" = "CD4 T-cells",
+  "15" = "NK cells"
 )
 PBMC_filtered_harmony <- RenameIdents(PBMC_filtered_harmony, cluster_annotations)
 
