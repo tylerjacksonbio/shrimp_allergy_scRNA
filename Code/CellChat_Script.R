@@ -1,4 +1,4 @@
-##### Loading in the required packages #####
+##### This is the Script for Running CellChat #####
 # Load libraries
 suppressMessages({
   library(Seurat)
@@ -11,8 +11,9 @@ suppressMessages({
 
 # Set global options
 options(stringsAsFactors = FALSE)
+set.seed(42)
 
-# Define directories and paths
+# Defining the needed directories and paths
 base_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su"
 data_dir <- file.path(base_dir, "PBMC_Dataset/Final_Datasets/Final_Annotated_Data")
 plot_dir <- file.path(base_dir, "PBMC_Plots/Correct_PBMC_Analysis/Cellchat_Analysis/Comparison_Only_LR_Pairs")
@@ -23,7 +24,7 @@ dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 PBMC_filtered_harmony <- readRDS(file.path(data_dir, "Final_Annotated_Data.rds"))
 Idents(PBMC_filtered_harmony) <- "Final_annotation_broad"
 
-# Subset function for CellChat preparation
+# Preparing data for CellChat
 prepare_cellchat_data <- function(object, condition) {
   subset_obj <- subset(object, subset = orig.ident == condition)
   data_input <- GetAssayData(subset_obj, assay = "RNA", slot = "data")
@@ -31,10 +32,10 @@ prepare_cellchat_data <- function(object, condition) {
   return(list(data = data_input, meta = meta))
 }
 
-# Conditions
+# The conditions that will be compared
 conditions <- c("HC-unstim", "HC-stim", "SA-unstim", "SA-stim")
 
-# Create CellChat objects
+# Creating the CellChat objects
 create_and_save_cellchat <- function(condition) {
   prepared_data <- prepare_cellchat_data(PBMC_filtered_harmony, condition)
   cellchat <- createCellChat(object = prepared_data$data, meta = prepared_data$meta, group.by = "group")
@@ -44,7 +45,7 @@ create_and_save_cellchat <- function(condition) {
 
 cellchat_objects <- map(conditions, create_and_save_cellchat)
 
-# Process CellChat objects with a standardized pipeline
+# Make function for running CellChat on individual conditions
 process_cellchat <- function(cellchat_obj) {
   cellchat_obj <- identifyOverExpressedGenes(cellchat_obj)
   cellchat_obj <- identifyOverExpressedInteractions(cellchat_obj)
@@ -56,7 +57,7 @@ process_cellchat <- function(cellchat_obj) {
   return(cellchat_obj)
 }
 
-# Run CellChat processing pipeline
+# Run CellChat processing pipeline, can set the multithreading options if parallelization desired
 future::plan("multisession", workers = 4)
 processed_cellchat_objects <- map(cellchat_objects, process_cellchat)
 
@@ -77,70 +78,81 @@ perform_comparison <- function(comparison_list, comparison_name) {
 walk2(compare_conditions, names(compare_conditions), perform_comparison)
 
 
-# Set global directories
+# Set the working directory for each comparison
+comparisons <- c("HCstim_vs_HCunstim", "SAstim_vs_SAunstim", 
+                 "SAstim_vs_HCstim", "SAunstim_vs_HCunstim")
+
 base_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/Cellchat_Analysis/Comparison_Only_LR_Pairs"
-save_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Datasets/Final_Annotated_Data"
 
-# Set working directory
-set_working_dir <- function(sub_dir) {
-  dir <- file.path(base_dir, sub_dir)
-  setwd(dir)
-}
+# Create directories for final plots
+lapply(comparisons, function(comp) {
+  dir.create(file.path(base_dir, comp, "Final_Plots"), showWarnings = FALSE, recursive = TRUE)
+})
 
-# Save PDF plots
-save_pdf <- function(filename, width = 8, height = 10, plot_expr) {
-  pdf(filename, width = width, height = height)
-  plot_expr()
+# Iterate through each comparison
+for (comp in comparisons) {
+  comp_dir <- file.path(base_dir, comp)
+  setwd(comp_dir)
+  
+  # Compare the number of interactions and the interaction strength
+  gg1 <- compareInteractions(cellchat, show.legend = FALSE, group = c(1, 2))
+  gg2 <- compareInteractions(cellchat, show.legend = FALSE, group = c(1, 2), measure = "weight")
+  
+  pdf(file.path(comp_dir, "Differential_interactions.pdf"))
+  print(gg1 + gg2)
   dev.off()
+  
+  # Visualize differential interactions with heatmaps
+  heatmap1 <- netVisual_heatmap(cellchat)
+  heatmap2 <- netVisual_heatmap(cellchat, measure = "weight")
+  
+  pdf(file.path(comp_dir, "Heatmap_interactions.pdf"))
+  print(heatmap1 + heatmap2)
+  dev.off()
+  
+  # Visualize interactions between cell populations
+  par(mfrow = c(1, 2), xpd = TRUE)
+  netVisual_diffInteraction(cellchat, weight.scale = TRUE, arrow.width = 2, arrow.size = 0.5, edge.width.max = 5)
+  netVisual_diffInteraction(cellchat, weight.scale = TRUE, measure = "weight", arrow.width = 2, edge.width.max = 8, targets.use = "gd T-cells")
+  
+  # Set dataset factors and plot differentially expressed genes
+  cellchat@meta$datasets <- factor(cellchat@meta$datasets, levels = strsplit(comp, "_vs_")[[1]])
+  signaling_pathways <- list(
+    "HCstim_vs_HCunstim" = c("MHC-II", "ITGB2", "MHC-I"),
+    "SAstim_vs_SAunstim" = c("MHC-II", "ITGB2", "CLEC", "SELPLG", "SPP1"),
+    "SAunstim_vs_HCunstim" = c("PARs", "TGFb", "ITGB2", "MHC-II"),
+    "SAstim_vs_HCstim" = c("TGFb", "BTLA", "TNF", "CLEC")
+  )
+  
+  pdf(file.path(comp_dir, "Signaling_pathway_gene_expression.pdf"))
+  for (pathway in signaling_pathways[[comp]]) {
+    plotGeneExpression(cellchat, signaling = pathway, split.by = "datasets", colors.ggplot = TRUE)
+  }
+  dev.off()
+  
+  # Save CellChat object for the comparison
+  saveRDS(cellchat, file.path(base_dir, "Final_Annotated_Data", paste0("cellchat_", comp, "_comparison.rds")))
 }
 
-# Plot gene expressions
-plot_gene_expression <- function(cellchat, signaling_list, split_by, output_file) {
-  save_pdf(output_file, plot_expr = function() {
-    for (signaling in signaling_list) {
-      plotGeneExpression(cellchat, signaling = signaling, split.by = split_by, colors.ggplot = TRUE)
-    }
-  })
-}
-
-# Save CellChat objects
-save_cellchat_objects <- function(cellchat, comparison_name) {
-  saveRDS(cellchat, file.path(save_dir, paste0("cellchat_", comparison_name, ".rds")))
-}
-
-# Example: HC-stim vs HC-unstim
-comparison_name <- "HCstim_vs_HCunstim"
-set_working_dir(comparison_name)
-cellchat@meta$datasets <- factor(cellchat@meta$datasets, levels = c("HC_unstim", "HC_stim"))
-
-# Plot gene expression
-plot_gene_expression(
-  cellchat,
-  signaling_list = c("MHC-II", "ITGB2", "MHC-I"),
-  split_by = "datasets",
-  output_file = "Signaling_pathway_gene_expression.pdf"
-)
-
-# Save the CellChat object
-save_cellchat_objects(cellchat, comparison_name)
-
-# Repeat for other comparisons
-comparisons <- list(
-  list(name = "SAstim_vs_SAunstim", levels = c("SA_unstim", "SA_stim"), signals = c("MHC-II", "ITGB2", "CLEC", "SELPLG", "SPP1")),
-  list(name = "SAunstim_vs_HCunstim", levels = c("HC_unstim", "SA_unstim"), signals = c("PARs", "TGFb", "ITGB2", "MHC-II")),
-  list(name = "SAstim_vs_HCstim", levels = c("HC_stim", "SA_stim"), signals = c("TGFb", "BTLA", "TNF", "CLEC"))
+# Plot final signaling pathways in gdT cells
+gdT_cell_signaling <- list(
+  "HCstim_vs_HCunstim" = c("IL16", "TGFb"),
+  "SAstim_vs_SAunstim" = c("IL16", "SPP1", "BTLA", "TNF"),
+  "SAunstim_vs_HCunstim" = c("TGFb", "LIGHT"),
+  "SAstim_vs_HCstim" = c("TGFb", "IL16", "BTLA", "LIGHT", "BAG")
 )
 
 for (comp in comparisons) {
-  set_working_dir(comp$name)
-  cellchat@meta$datasets <- factor(cellchat@meta$datasets, levels = comp$levels)
-  plot_gene_expression(
-    cellchat,
-    signaling_list = comp$signals,
-    split_by = "datasets",
-    output_file = "Signaling_pathway_gene_expression.pdf"
-  )
-  save_cellchat_objects(cellchat, comp$name)
+  final_plot_dir <- file.path(base_dir, comp, "Final_Plots")
+  setwd(final_plot_dir)
+  
+  cellchat@meta$datasets <- factor(cellchat@meta$datasets, levels = strsplit(comp, "_vs_")[[1]])
+  
+  pdf(file.path(final_plot_dir, "Signaling_pathway_gene_expression_gdT_cells.pdf"))
+  for (pathway in gdT_cell_signaling[[comp]]) {
+    plotGeneExpression(cellchat, signaling = pathway, split.by = "datasets", colors.ggplot = TRUE)
+  }
+  dev.off()
 }
 
 
