@@ -1,10 +1,12 @@
 #################################### Analysis of the Gamma-delta T-cell Clusters ####################################
 # Importing the necessary libraries
-library(clusterProfiler)
-library(org.Hs.eg.db)
-library(DOSE)
-library(enrichplot)
-library(ggplot2)
+suppressMessages({
+  library(clusterProfiler)
+  library(org.Hs.eg.db)
+  library(DOSE)
+  library(enrichplot)
+  library(ggplot2)
+})
 
 # Set working directories
 base_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Test_Script/'
