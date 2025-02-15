@@ -397,6 +397,7 @@ sceasy::convertFormat(
 )
 
 ##### Apply Harmony Batch Correction for the Different Sample Groups #####
+# Plotting the results of the data before batch correction
 PBMC_filtered <- PBMC_filtered %>%
   NormalizeData(normalization.method = 'LogNormalize') %>%
   FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
@@ -417,14 +418,14 @@ PBMC_filtered@meta.data$group.colors <- my_colors[as.integer(PBMC_filtered@meta.
 # Save and plot clustering results
 saveRDS(PBMC_filtered, 'Before_batch_correction_data.rds')
 
+# Directory to save the plots
+setwd('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/Annotation_Plots/')
+
 pdf('Clustering_after_QC.pdf')
 DimPlot(PBMC_filtered, reduction = 'umap', group.by = 'seurat_clusters', pt.size = 0.1, label = TRUE)
 DimPlot(PBMC_filtered, reduction = 'umap', group.by = 'orig.ident', cols = my_colors, pt.size = 0.1)
 DimPlot(PBMC_filtered, reduction = 'tsne', group.by = 'seurat_clusters', pt.size = 0.1)
 dev.off()
-
-# Set working directory
-setwd('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/Annotation_Plots/')
 
 # Define a helper function
 create_feature_dotplots <- function(data, features, group.by, filename, point.size = 0.7) {
@@ -467,7 +468,7 @@ for (group in names(marker_groups)) {
   )
 }
 
-# Batch Correction with Harmony
+# Applying batch correction with Harmony
 PBMC_filtered_harmony <- PBMC_filtered %>%
   RunHarmony(group.by.vars = c('orig.ident'), plot_convergence = TRUE) %>%
   NormalizeData(normalization.method = "LogNormalize", scale.factor = 10000) %>%
