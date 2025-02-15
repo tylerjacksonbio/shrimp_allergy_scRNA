@@ -385,7 +385,7 @@ dev.off()
 # [1] stats     graphics  grDevices datasets  utils     methods   base     
 
 # other attached packages:
-# [1] cowplot_1.1.3      patchwork_1.3.0    sceasy_0.0.7       reticulate_1.40.0  Seurat_5.2.1       SeuratObject_5.0.2 sp_2.2-0          
+# [1] cowplot_1.1.3      patchwork_1.3.0    sceasy_0.0.7       reticulate_1.40.0  Seurat_4.3.0       SeuratObject_5.0.2 sp_2.2-0          
 
 # loaded via a namespace (and not attached):
 #   [1] deldir_2.0-4           pbapply_1.7-2          gridExtra_2.3          rlang_1.1.5            magrittr_2.0.3         RcppAnnoy_0.0.22       matrixStats_1.5.0      ggridges_0.5.6        
