@@ -1,4 +1,4 @@
-##### Analysis of the Gamma-delta T-cell Clusters #####
+#################################### Analysis of the Gamma-delta T-cell Clusters ####################################
 # Importing the necessary libraries
 library(clusterProfiler)
 library(org.Hs.eg.db)
@@ -93,7 +93,7 @@ Gdt_subgroups <- lapply(group_conditions, function(conds) {
 })
 names(Gdt_subgroups) <- names(group_conditions)
 
-##### GO and DEG analysis for upregulated genes - comparing sample groups in the gdT-cell total cluster #####
+#################################### GO and DEG analysis for upregulated genes - comparing sample groups in the gdT-cell total cluster ####################################
 # Set cluster identities and ordering
 Idents(Gdt_cell_clusters) <- Gdt_cell_clusters@meta.data$orig.ident
 Gdt_cell_clusters@meta.data$orig.ident <- factor(
@@ -276,4 +276,39 @@ lapply(c('CD8A', 'CD8B', 'IL7R', 'TGFB1'), function(feature) {
 })
 dev.off()
 
+#################################### Session Info ####################################
+# R version 4.4.2 (2024-10-31)
+# Platform: aarch64-apple-darwin20
+# Running under: macOS Sequoia 15.2
 
+# Matrix products: default
+# BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+# LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+# locale:
+# [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+# time zone: America/Monterrey
+# tzcode source: internal
+
+# attached base packages:
+# [1] stats4    stats     graphics  grDevices datasets  utils     methods   base     
+
+# other attached packages:
+#  [1] ggplot2_3.5.1          enrichplot_1.26.6      DOSE_4.0.0             org.Hs.eg.db_3.20.0    AnnotationDbi_1.68.0   IRanges_2.40.1         S4Vectors_0.44.0       Biobase_2.66.0        
+#  [9] BiocGenerics_0.52.0    clusterProfiler_4.14.4
+
+# loaded via a namespace (and not attached):
+#  [1] tidyselect_1.2.1        dplyr_1.1.4             farver_2.1.2            blob_1.2.4              R.utils_2.12.3          Biostrings_2.74.1       lazyeval_0.2.2         
+#  [8] fastmap_1.2.0           digest_0.6.37           lifecycle_1.0.4         KEGGREST_1.46.0         tidytree_0.4.6          RSQLite_2.3.9           magrittr_2.0.3         
+# [15] compiler_4.4.2          rlang_1.1.5             tools_4.4.2             igraph_2.1.4            data.table_1.16.4       ggtangle_0.0.6          bit_4.5.0.1            
+# [22] gson_0.1.0              plyr_1.8.9              RColorBrewer_1.1-3      aplot_0.2.4             BiocParallel_1.40.0     withr_3.0.2             purrr_1.0.4            
+# [29] R.oo_1.27.0             grid_4.4.2              GOSemSim_2.32.0         colorspace_2.1-1        GO.db_3.20.0            scales_1.3.0            cli_3.6.4              
+# [36] crayon_1.5.3            treeio_1.30.0           generics_0.1.3          rstudioapi_0.17.1       ggtree_3.14.0           httr_1.4.7              reshape2_1.4.4         
+# [43] ape_5.8-1               DBI_1.2.3               qvalue_2.38.0           cachem_1.1.0            stringr_1.5.1           zlibbioc_1.52.0         splines_4.4.2          
+# [50] parallel_4.4.2          ggplotify_0.1.2         BiocManager_1.30.25     XVector_0.46.0          yulab.utils_0.2.0       vctrs_0.6.5             Matrix_1.7-2           
+# [57] jsonlite_1.8.9          gridGraphics_0.5-1      patchwork_1.3.0         bit64_4.6.0-1           ggrepel_0.9.6           tidyr_1.3.1             glue_1.8.0             
+# [64] codetools_0.2-20        cowplot_1.1.3           stringi_1.8.4           gtable_0.3.6            GenomeInfoDb_1.42.3     UCSC.utils_1.2.0        munsell_0.5.1          
+# [71] tibble_3.2.1            pillar_1.10.1           fgsea_1.32.2            GenomeInfoDbData_1.2.13 R6_2.6.0                lattice_0.22-6          R.methodsS3_1.8.2      
+# [78] png_0.1-8               memoise_2.0.1           renv_1.1.1              ggfun_0.1.8             Rcpp_1.0.14             fastmatch_1.1-6         nlme_3.1-167           
+# [85] fs_1.6.5                pkgconfig_2.0.3     
