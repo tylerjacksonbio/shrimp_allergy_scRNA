@@ -1,10 +1,11 @@
 ##### Annotation using of Whole Data using Azimuth. Gamma-delta T-cell Annotation also Included, Annotated using a Module Score of Known Gamma-delta T-cell Marker Genes #####
 # Importing required libraries
-library(Seurat)
-library(sceasy)
-library(patchwork)
-library(cowplot)
-library(clustree)
+suppressMessages({library(Seurat)
+  library(sceasy)
+  library(patchwork)
+  library(cowplot)
+  library(clustree)
+})
 set.seed(42)
 
 # This is the URL for running Azimuth using the web interface - https://app.azimuth.hubmapconsortium.org/app/human-pbmc
