@@ -28,7 +28,7 @@ suppressMessages({
 })
 set.seed(42)
 
-##### Performing SoupX Ambient RNA Removal #####
+############################################# Performing SoupX Ambient RNA Removal #############################################
 # Loading in the .h5 outputs from CellRanger 6.1.2
 setwd('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Cellranger_Output_Files/')
 SD1_counts <- Read10X_h5("SD1_filtered_feature_bc_matrix.h5")
@@ -191,7 +191,7 @@ for (i in seq_along(datasets)) {
   saveRDS(srat, file = paste0(dataset_name, "_srat.rds"))
 }
 
-##### Performing Doublet Removal using DoubletFinder #####
+############################################# Performing Doublet Removal using DoubletFinder #############################################
 
 # Define datasets and their orig.ident values
 datasets <- list(SD1_srat = "HC-unstim",
@@ -314,7 +314,7 @@ for (i in 1:length(all.samples.split)) {
 
 table(PBMC_sample@meta.data[["doublet"]])
 
-##### Merge Samples into a New List Containing Only Singlets #####
+############################################# Merge Samples into a New List Containing Only Singlets #############################################
 PBMC_sample.singlets <- merge(
   x = all.samples.split[[1]],
   y = all.samples.split[-1],
@@ -326,7 +326,7 @@ print(PBMC_sample.singlets)
 saveRDS(PBMC_sample.singlets, 'Combined_after_ambient_and_doublet_removal.rds')
 PBMC_sample.singlets <- readRDS('Combined_after_ambient_and_doublet_removal.rds')
 
-##### Cluster Data to Compare Before and After Doublet Removal #####
+############################################# Cluster Data to Compare Before and After Doublet Removal #############################################
 PBMC_sample.singlets <- PBMC_sample.singlets %>%
   NormalizeData(normalization.method = 'LogNormalize') %>%
   FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
@@ -377,7 +377,7 @@ print(plot1)
 print(plot2)
 dev.off()
 
-##### Filter low-quality cells #####
+############################################# Filter low-quality cells #############################################
 PBMC_filtered <- subset(
   PBMC_sample.singlets, 
   subset = nCount_RNA > 500 & nCount_RNA < 20000 &
@@ -396,7 +396,7 @@ sceasy::convertFormat(
   outFile = 'PBMC_filtered.h5ad'
 )
 
-##### Apply Harmony Batch Correction for the Different Sample Groups #####
+############################################# Apply Harmony Batch Correction for the Different Sample Groups #############################################
 # Plotting the results of the data before batch correction
 PBMC_filtered <- PBMC_filtered %>%
   NormalizeData(normalization.method = 'LogNormalize') %>%
@@ -496,3 +496,57 @@ sceasy::convertFormat(
   from = "seurat", to = "anndata", 
   outFile = 'PBMC_filtered_harmony.h5ad'
 )
+
+###################################### Session Info ######################################
+# R version 4.4.2 (2024-10-31)
+# Platform: aarch64-apple-darwin20
+# Running under: macOS Sequoia 15.2
+
+# Matrix products: default
+# BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+# LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+# locale:
+# [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+# time zone: America/Monterrey
+# tzcode source: internal
+
+# attached base packages:
+# [1] parallel  stats4    stats     graphics  grDevices datasets  utils     methods   base     
+
+# other attached packages:
+#  [1] org.Hs.eg.db_3.20.0         AnnotationDbi_1.68.0        clusterProfiler_4.14.4      lubridate_1.9.4             forcats_1.0.0               stringr_1.5.1              
+#  [7] purrr_1.0.4                 readr_2.1.5                 tidyr_1.3.1                 tibble_3.2.1                tidyverse_2.0.0             SeuratDisk_0.0.0.9021      
+# [13] harmony_1.2.3               Rcpp_1.0.14                 cowplot_1.1.3               anndata_0.7.5.6             sceasy_0.0.7                reticulate_1.40.0          
+# [19] DoubletFinder_2.0.4         lattice_0.22-6              glmGamPoi_1.18.0            SoupX_1.6.2                 dplyr_1.1.4                 patchwork_1.3.0            
+# [25] scran_1.34.0                scater_1.34.0               scuttle_1.16.0              ggplot2_3.5.1               SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
+# [31] Biobase_2.66.0              GenomicRanges_1.58.0        GenomeInfoDb_1.42.3         IRanges_2.40.1              S4Vectors_0.44.0            BiocGenerics_0.52.0        
+# [37] MatrixGenerics_1.18.1       matrixStats_1.5.0           Seurat_5.2.1                SeuratObject_5.0.2          sp_2.2-0                    dior_0.1.5                 
+
+# loaded via a namespace (and not attached):
+#   [1] fs_1.6.5                spatstat.sparse_3.1-0   enrichplot_1.26.6       httr_1.4.7              RColorBrewer_1.1-3      tools_4.4.2             sctransform_0.4.1      
+#   [8] backports_1.5.0         R6_2.6.0                lazyeval_0.2.2          uwot_0.2.2              withr_3.0.2             gridExtra_2.3           progressr_0.15.1       
+#  [15] cli_3.6.4               spatstat.explore_3.3-4  fastDummies_1.7.5       spatstat.data_3.1-4     ggridges_0.5.6          pbapply_1.7-2           yulab.utils_0.2.0      
+#  [22] gson_0.1.0              foreign_0.8-88          R.utils_2.12.3          DOSE_4.0.0              parallelly_1.42.0       maps_3.4.2.1            limma_3.62.2           
+#  [29] rstudioapi_0.17.1       RSQLite_2.3.9           gridGraphics_0.5-1      generics_0.1.3          ica_1.0-3               spatstat.random_3.3-2   GO.db_3.20.0           
+#  [36] Matrix_1.7-2            ggbeeswarm_0.7.2        abind_1.4-8             R.methodsS3_1.8.2       lifecycle_1.0.4         edgeR_4.4.2             qvalue_2.38.0          
+#  [43] SparseArray_1.6.1       Rtsne_0.17              blob_1.2.4              grid_4.4.2              promises_1.3.2          dqrng_0.4.1             crayon_1.5.3           
+#  [50] ggtangle_0.0.6          miniUI_0.1.1.1          beachmat_2.22.0         KEGGREST_1.46.0         pillar_1.10.1           knitr_1.49              metapod_1.14.0         
+#  [57] fgsea_1.32.2            future.apply_1.11.3     codetools_0.2-20        fastmatch_1.1-6         glue_1.8.0              ggfun_0.1.8             spatstat.univar_3.1-1  
+#  [64] data.table_1.16.4       treeio_1.30.0           vctrs_0.6.5             png_0.1-8               spam_2.11-1             gtable_0.3.6            assertthat_0.2.1       
+#  [71] cachem_1.1.0            xfun_0.50               S4Arrays_1.6.0          mime_0.12               survival_3.8-3          fields_16.3             statmod_1.5.0          
+#  [78] bluster_1.16.0          fitdistrplus_1.2-2      ROCR_1.0-11             nlme_3.1-167            ggtree_3.14.0           bit64_4.6.0-1           RcppAnnoy_0.0.22       
+#  [85] irlba_2.3.5.1           vipor_0.4.7             KernSmooth_2.23-26      rpart_4.1.24            colorspace_2.1-1        DBI_1.2.3               Hmisc_5.2-2            
+#  [92] nnet_7.3-20             tidyselect_1.2.1        bit_4.5.0.1             compiler_4.4.2          htmlTable_2.4.3         BiocNeighbors_2.0.1     hdf5r_1.3.12           
+#  [99] DelayedArray_0.32.0     plotly_4.10.4           checkmate_2.3.2         scales_1.3.0            lmtest_0.9-40           digest_0.6.37           goftest_1.2-3          
+# [106] spatstat.utils_3.1-2    rmarkdown_2.29          XVector_0.46.0          htmltools_0.5.8.1       pkgconfig_2.0.3         base64enc_0.1-3         fastmap_1.2.0          
+# [113] rlang_1.1.5             htmlwidgets_1.6.4       UCSC.utils_1.2.0        shiny_1.10.0            farver_2.1.2            zoo_1.8-12              jsonlite_1.8.9         
+# [120] BiocParallel_1.40.0     R.oo_1.27.0             GOSemSim_2.32.0         BiocSingular_1.22.0     magrittr_2.0.3          ggplotify_0.1.2         Formula_1.2-5          
+# [127] GenomeInfoDbData_1.2.13 dotCall64_1.2           munsell_0.5.1           ape_5.8-1               viridis_0.6.5           stringi_1.8.4           zlibbioc_1.52.0        
+# [134] MASS_7.3-64             plyr_1.8.9              listenv_0.9.1           ggrepel_0.9.6           deldir_2.0-4            Biostrings_2.74.1       splines_4.4.2          
+# [141] tensor_1.5              hms_1.1.3               locfit_1.5-9.11         igraph_2.1.4            spatstat.geom_3.3-5     RcppHNSW_0.6.0          reshape2_1.4.4         
+# [148] ScaledMatrix_1.14.0     evaluate_1.0.3          renv_1.1.1              BiocManager_1.30.25     tzdb_0.4.0              httpuv_1.6.15           RANN_2.6.2             
+# [155] polyclip_1.10-7         future_1.34.0           scattermore_1.2         rsvd_1.0.5              xtable_1.8-4            tidytree_0.4.6          RSpectra_0.16-2        
+# [162] later_1.4.1             viridisLite_0.4.2       aplot_0.2.4             memoise_2.0.1           beeswarm_0.4.0          cluster_2.1.8           timechange_0.3.0       
+# [169] globals_0.16.3    
