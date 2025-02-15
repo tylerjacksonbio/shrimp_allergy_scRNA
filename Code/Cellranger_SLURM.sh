@@ -10,9 +10,7 @@
 #SBATCH -e /mount/hli/Tyler/scRNA_Scripts/scRNA_error_files/%j.e
 #SBATCH -o /mount/hli/Tyler/scRNA_Scripts/scRNA_output_files/%j.o
 
-### Commonly used parameters
-
-### Settings of commonly used folders
+### Set the paths
 mountFolder=/mount/hli
 projectFolder=/project/hli
 codeFolder=/home/u239500/codeFolder/HuiLab
