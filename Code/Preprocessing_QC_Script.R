@@ -522,7 +522,7 @@ sceasy::convertFormat(
 # [19] DoubletFinder_2.0.4         lattice_0.22-6              glmGamPoi_1.18.0            SoupX_1.6.2                 dplyr_1.1.4                 patchwork_1.3.0            
 # [25] scran_1.34.0                scater_1.34.0               scuttle_1.16.0              ggplot2_3.5.1               SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
 # [31] Biobase_2.66.0              GenomicRanges_1.58.0        GenomeInfoDb_1.42.3         IRanges_2.40.1              S4Vectors_0.44.0            BiocGenerics_0.52.0        
-# [37] MatrixGenerics_1.18.1       matrixStats_1.5.0           Seurat_5.2.1                SeuratObject_5.0.2          sp_2.2-0                    dior_0.1.5                 
+# [37] MatrixGenerics_1.18.1       matrixStats_1.5.0           Seurat_4.3.0                SeuratObject_5.0.2          sp_2.2-0                    dior_0.1.5                 
 
 # loaded via a namespace (and not attached):
 #   [1] fs_1.6.5                spatstat.sparse_3.1-0   enrichplot_1.26.6       httr_1.4.7              RColorBrewer_1.1-3      tools_4.4.2             sctransform_0.4.1      
