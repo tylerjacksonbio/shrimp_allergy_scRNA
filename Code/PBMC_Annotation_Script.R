@@ -1,6 +1,7 @@
-##### Annotation using of Whole Data using Azimuth. Gamma-delta T-cell Annotation also Included, Annotated using a Module Score of Known Gamma-delta T-cell Marker Genes #####
-# Importing required libraries
-suppressMessages({library(Seurat)
+##### Annotation using of Whole Data using Azimuth. Gamma-delta T-cell Annotation also Included, Annotated using the Module Score\
+#################################################################  Importing required libraries and preparing directories #################################################################  
+suppressMessages({
+  library(Seurat)
   library(sceasy)
   library(patchwork)
   library(cowplot)
@@ -10,44 +11,51 @@ set.seed(42)
 
 # This is the URL for running Azimuth using the web interface - https://app.azimuth.hubmapconsortium.org/app/human-pbmc
 # Load the Harmony object and convert formats
-PBMC_filtered_harmony <- readRDS('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Datasets/Final_Annotated_Data/PBMC_filtered_harmony.rds')
-PBMC_filtered_harmony <- readRDS('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Test_Script/Final_Data_Upload_Analysis/Merged_adata.rds')
+PBMC_filtered_harmony <- readRDS('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Datasets/Intermediate_Data_Files/PBMC_Filtered_Harmony.rds')
 
-############################################# Running Azimuth #############################################
 # The .h5Seurat format is required for using the Azimuth annotation program
-SaveH5Seurat(PBMC_filtered_harmony, 'PBMC_filtered_harmony.h5Seurat')
+SaveH5Seurat(PBMC_filtered_harmony, '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Datasets/Intermediate_Data_Files/PBMC_filtered_harmony.h5Seurat')
 
-# Add Azimuth predictions from the annotation program
+# Setting the directory paths
+pred_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/Annotation_Plots/Azimuth_Annotation/'
+final_data_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Annotated_Data/"
+
+################################################################# Add Azimuth predictions to data #################################################################  
 add_azimuth_metadata <- function(object, filepath) {
   predictions <- read.delim(filepath, row.names = 1)
   AddMetaData(object = object, metadata = predictions)
 }
 
-PBMC_filtered_harmony <- add_azimuth_metadata(PBMC_filtered_harmony, 'azimuth_pred_intermediate.tsv')
-PBMC_filtered_harmony <- add_azimuth_metadata(PBMC_filtered_harmony, 'azimuth_pred_broad.tsv')
+PBMC_filtered_harmony <- add_azimuth_metadata(PBMC_filtered_harmony, filepath = file.path(pred_dir, 'azimuth_pred_intermediate.tsv'))
+PBMC_filtered_harmony <- add_azimuth_metadata(PBMC_filtered_harmony, filepath = file.path(pred_dir, 'azimuth_pred_broad.tsv'))
 
 # Add UMAP projections
-projected.umap <- readRDS('azimuth_umap.Rds')
+projected.umap <- readRDS(file = file.path(pred_dir, 'azimuth_umap.Rds'))
 PBMC_filtered_harmony <- PBMC_filtered_harmony[, Cells(projected.umap)]
 PBMC_filtered_harmony[['umap.proj']] <- projected.umap
 
 # Define plotting function
 save_dim_feature_plots <- function(object, filename, reductions, groups, features = NULL, pt.size = 0.5, order = FALSE) {
   pdf(filename)
+  
   for (reduction in reductions) {
     for (group in groups) {
-      DimPlot(object, reduction = reduction, group.by = group, pt.size = pt.size, label = FALSE) + theme_minimal()
+      p <- DimPlot(object, reduction = reduction, group.by = group, pt.size = pt.size, label = FALSE)
+      print(p)  # Ensure the plot is added to the PDF
     }
   }
+  
   if (!is.null(features)) {
-    FeaturePlot(object, features, pt.size = pt.size, order = order) + theme_minimal()
+    p <- FeaturePlot(object, features, pt.size = pt.size, order = order) + theme_minimal()
+    print(p)  # Ensure the feature plot is added to the PDF
   }
+  
   dev.off()
 }
 
 # Plot Azimuth classifications and UMAP projections
 save_dim_feature_plots(
-  PBMC_filtered_harmony, 'Classification_Azimuth.pdf',
+  PBMC_filtered_harmony, filename = file.path(test_dir, 'Classification_Azimuth.pdf'),
   reductions = c('umap.proj', 'umap'),
   groups = c('orig.ident', 'seurat_clusters', 'predicted.celltype.l1', 'predicted.celltype.l2')
 )
@@ -65,22 +73,23 @@ marker_genes <- list(
 )
 
 for (name in names(marker_genes)) {
-  pdf(paste0(name, '.pdf'))
+  pdf(file = file.path(test_dir,(paste0(name, '.pdf'))))
   FeaturePlot(PBMC_filtered_harmony, marker_genes[[name]], pt.size = 0.5, order = TRUE) + theme_minimal()
-  plot_grid(
+  p =plot_grid(
     DotPlot(
       object = PBMC_filtered_harmony,
       features = marker_genes[[name]],
       group.by = 'seurat_clusters'
     ) + theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title.x = element_blank())
   )
+  print(p)
   dev.off()
 }
 
 # Set final annotations and plot all markers
 Idents(PBMC_filtered_harmony) <- 'Final_annotation'
-pdf('All_markers.pdf', height = 10, width = 10)
-plot_grid(
+pdf(file = file.path(test_dir, 'All_markers.pdf'), height = 10, width = 10)
+  plot_grid(
   DotPlot(
     object = PBMC_filtered_harmony,
     features = unlist(marker_genes),
@@ -89,9 +98,8 @@ plot_grid(
 )
 dev.off()
 
-############################################# Reannotating the data using Azimuth predictions and marker genes #############################################
+################################################################# Reannotating the data using Azimuth predictions and marker genes ################################################################# 
 # Find clusters at the desired resolution and set up final annotation metadata
-PBMC_filtered_harmony <- readRDS('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Test_Script/Final_Data_Upload_Analysis/Merged_adata.rds')
 PBMC_filtered_harmony<-FindNeighbors(PBMC_filtered_harmony, reduction = 'harmony', dims = 1:50)
 PBMC_filtered_harmony<-RunUMAP(PBMC_filtered_harmony, reduction = 'harmony', dims = 1:50, n.neighbors = 15)
 PBMC_filtered_harmony<-RunTSNE(PBMC_filtered_harmony, reduction = 'harmony', dims = 1:50, n.neighbors = 15)
@@ -165,22 +173,21 @@ plot_annotations <- function(object, filename) {
 plot_annotations(PBMC_filtered_harmony, "Final_annotation.pdf")
 
 # Save the annotated object and convert format
-output_path <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Annotated_Data/"
-saveRDS(PBMC_filtered_harmony, file.path(output_path, "Final_annotated_object.rds"))
+saveRDS(PBMC_filtered_harmony, file.path(final_data_dir, "Final_annotated_object.rds"))
 sceasy::convertFormat(
   PBMC_filtered_harmony,
   from = "seurat",
   to = "anndata",
-  outFile = file.path(output_path, "Final_annotated_object.h5ad")
+  outFile = file.path(final_data_dir, "Final_annotated_object.h5ad")
 )
 
-############################################# Save the final annotated object used for downstream analysis #############################################
-saveRDS(PBMC_filtered_harmony, file.path(output_path, "Merged_adata.rds"))
+################################################################# Save the final annotated object used for downstream analysis################################################################# 
+saveRDS(PBMC_filtered_harmony, file.path(final_data_dir, "Merged_adata.rds"))
 sceasy::convertFormat(
   PBMC_filtered_harmony,
   from = "seurat",
   to = "anndata",
-  outFile = file.path(output_path, "Merged_adata.h5ad")
+  outFile = file.path(final_data_dir, "Merged_adata.h5ad")
 )
 
 ############################################# Whole data cell proportion analysis #############################################
