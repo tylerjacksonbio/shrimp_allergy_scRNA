@@ -1,5 +1,5 @@
-#################################### Analysis of the Gamma-delta T-cell Clusters ####################################
-# Importing the necessary libraries
+##### Analysis of the Gamma-delta T-cell Clusters
+###################################################### Importing the necessary libraries and set the working directories ######################################################
 suppressMessages({
   library(clusterProfiler)
   library(org.Hs.eg.db)
@@ -9,33 +9,18 @@ suppressMessages({
 })
 
 # Set working directories
-base_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Test_Script/'
-data_dir <- paste0(base_dir, 'Final_Data_Upload_Analysis/')
-final_data_dir <- paste0(base_dir, 'Final_Data_Upload_Analysis/')
-plot_dir <- paste0(base_dir, 'UMAPs/')
-go_plot_dir <- paste0(base_dir, 'GO_Plots/')
-go_sheet_dir <- paste0(base_dir, 'GO_Sheets/')
-
-# Real directories
 base_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/'
-data_dir <- paste0(base_dir, 'PBMC_Dataset/Final_Datasets/Final_Annotatted_Data')
-final_data_dir <- paste0(base_dir, 'PBMC_Dataset/Final_Datasets/Data_Subsets/')
-plot_dir <- paste0(base_dir, 'PBMC_Plots/Correct_PBMC_Analysis/Gdt_Cell_DEG_Analysis/DEG_Analysis_Plots/UMAPs/')
+data_dir <- paste0(base_dir, 'PBMC_Dataset/Final_Datasets/Data_Subsets/')
+plot_dir <- paste0(base_dir, 'PBMC_Plots/Correct_PBMC_Analysis/Gdt_Cell_DEG_Analysis/DEG_Analysis_Plots/')
 go_plot_dir <- paste0(plot_dir, 'Gdt_Cell_GO_Analysis/Upregulated_Genes_GO/')
 go_sheet_dir <- paste0(base_dir, 'GO_Analysis_Sheets/Gdt_Cell_GO/Upregulated_Genes_GO/')
 
 # Load gdt-cell clusters data
-Gdt_cell_clusters <- readRDS(file.path(final_data_dir, 'Gdt_cells_subset.rds'))
+Gdt_cell_clusters <- readRDS(file.path(data_dir, '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Final_Datasets/Data_Subsets/Gdt_cells_subset.rds'))
 
-# Define a helper function for creating FeaturePlots
-plot_features <- function(obj, features, reduction = 'umap', title = NULL, ...) {
-  plots <- FeaturePlot(obj, features = features, reduction = reduction, order = TRUE, combine = FALSE, ...) +
-    lapply(plots, function(p) p + labs(title = title) + theme_minimal())
-  return(plots)
-}
-
+###################################################### Plotting features of the gdT-cells ###################################################### 
 # Cell surface markers visualization
-pdf('TRDC_TRDV_TRGV_expression_gdt_cells.pdf')
+pdf(file = file.path(plot_dir, 'TRDC_TRDV_TRGV_expression_gdt_cells.pdf'))
 DimPlot(Gdt_cell_clusters, reduction = 'umap', group.by = 'Gdt_cluster_subsets')
 FeaturePlot(Gdt_cell_clusters, reduction = 'umap', features = c('TRDC', 'TRDV1', 'TRDV2', 'TRDV3'), order = TRUE)
 FeaturePlot(Gdt_cell_clusters, reduction = 'umap', features = c('TRGV2', 'TRGV7', 'TRGV8', 'TRGV10'), order = TRUE)
@@ -57,11 +42,10 @@ my_colors <- c('#9FBDD3','#5A6EDC','#F6CC93','#F09924')
 Gdt_cell_clusters_TRDV2_TRGV9@meta.data$group.colors <- my_colors[as.integer(Gdt_cell_clusters_TRDV2_TRGV9@meta.data$orig.ident)]
 
 # UMAP plots for TRDV2/TRGV9 cluster
-setwd(plot_dir)
-pdf('TRGV9TRDV2_gdt_cluster_by_sample_identity.pdf')
+pdf(file = file.path(plot_dir, 'TRGV9TRDV2_gdt_cluster_by_sample_identity.pdf'))
 DimPlot(Gdt_cell_clusters_TRDV2_TRGV9, reduction = 'umap', group.by = 'Gdt_cluster_subsets', pt.size = 3)
-plot_features(Gdt_cell_clusters_TRDV2_TRGV9, features = 'PTPRC', title = "CD45RA Expression", pt.size = 3)
-plot_features(Gdt_cell_clusters_TRDV2_TRGV9, features = 'CD27', title = "CD27 Expression", pt.size = 3)
+FeaturePlot(Gdt_cell_clusters_TRDV2_TRGV9, features = 'PTPRC', pt.size = 3) + ggtitle('CD45RA Expression')
+FeaturePlot(Gdt_cell_clusters_TRDV2_TRGV9, features = 'CD27', pt.size = 3) + ggtitle('CD27 Expression')
 FeaturePlot(Gdt_cell_clusters_TRDV2_TRGV9, reduction = 'umap', features = c('CD27', 'PTPRC'), combine = FALSE, pt.size = 3, blend = TRUE, blend.threshold = 0.5)
 DimPlot(Gdt_cell_clusters_TRDV2_TRGV9, group.by = 'orig.ident', cols = my_colors, pt.size = 3)
 dev.off()
@@ -71,31 +55,19 @@ subclusters <- c('gdt_cluster_1', 'gdt_cluster_2', 'gdt_cluster_3')
 gdT_subclusters <- lapply(subclusters, function(cluster) {
   subset(Gdt_cell_clusters, subset = Gdt_cluster_subsets == cluster)
 })
-names(gdT_subclusters) <- subclusters
 
-pdf('IL7R_TGFB1_Expression_Gdt_cells.pdf')
-FeaturePlot(Gdt_cell_clusters, features = c('IL7R'))
-FeaturePlot(Gdt_cell_clusters, features = c('TGFB1'))
-dev.off()
+names(gdT_subclusters) <- subclusters
 
 lapply(gdT_subclusters, function(cluster) {
   table(cluster@meta.data$orig.ident)
 })
 
-# Subsetting groups for downstream analysis
-group_conditions <- list(
-  HC = c('HC-unstim', 'HC-stim'),
-  SA = c('SA-unstim', 'SA-stim'),
-  unstim = c('SA-unstim', 'HC-unstim'),
-  stim = c('SA-stim', 'HC-stim')
-)
+pdf(file = file.path(plot_dir, 'IL7R_TGFB1_Expression_Gdt_cells.pdf'))
+FeaturePlot(Gdt_cell_clusters, features = c('IL7R'))
+FeaturePlot(Gdt_cell_clusters, features = c('TGFB1'))
+dev.off()
 
-Gdt_subgroups <- lapply(group_conditions, function(conds) {
-  subset(Gdt_cell_clusters, subset = orig.ident %in% conds)
-})
-names(Gdt_subgroups) <- names(group_conditions)
-
-#################################### GO and DEG analysis for upregulated genes - comparing sample groups in the gdT-cell total cluster ####################################
+###################################################### GO and DEG analysis for upregulated genes - comparison of sample groups and gdT-cell subtypes in the gdT-cells  ###################################################### 
 # Set cluster identities and ordering
 Idents(Gdt_cell_clusters) <- Gdt_cell_clusters@meta.data$orig.ident
 Gdt_cell_clusters@meta.data$orig.ident <- factor(
@@ -103,12 +75,12 @@ Gdt_cell_clusters@meta.data$orig.ident <- factor(
   levels = c("HC-unstim", "HC-stim", "SA-unstim", "SA-stim")
 )
 
-# Define a helper function for DEG and GO analysis
+# Function for DEG and GO analysis between sample groups
 perform_deg_go_analysis <- function(obj, ident1, ident2, logfc_threshold = 0.5, ontologies = c("BP", "MF", "CC"), output_prefix) {
   # DEG analysis
   deg_results <- FindMarkers(obj, ident.1 = ident1, ident.2 = ident2, only.pos = TRUE, logfc.threshold = logfc_threshold, test.use = 'wilcox')
   deg_file <- paste0(output_prefix, "_DEG_results.csv")
-  write.csv(deg_results, file = deg_file, row.names = TRUE)
+  write.csv(deg_dir, deg_results, file = deg_file, row.names = TRUE)
   
   # Select top 10 genes based on p-value
   top_genes_10 <- deg_results %>%
@@ -201,7 +173,7 @@ results <- lapply(comparisons_SampleGroups, function(comp) {
   )
 })
 
-# Define comparisons for the sample groups in gd T-cells
+# Define comparisons for the subtypes of gd T-cells
 comparisons_gdtSubsets <- list(
   list(ident1 = "gdt_cluster_1", ident2 = c("gdt_cluster_2", "gdt_cluster_3"), prefix = "gdt_cluster_1_up"),
   list(ident1 = c("gdt_cluster_2", "gdt_cluster_3"), ident2 = "gdt_cluster_1", prefix = "gdt_cluster_1_down"),
@@ -271,7 +243,7 @@ lapply(features_list, function(features) {
   FeaturePlot(Gdt_cell_clusters, features = features, reduction = 'umap', order = TRUE, min.cutoff = 0, max.cutoff = 3)
 })
 
-# Add violin plots
+# Make violin plots
 lapply(c('CD8A', 'CD8B', 'IL7R', 'TGFB1'), function(feature) {
   VlnPlot(Gdt_cell_clusters, feature, group.by = 'Gdt_cluster_subsets', cols = my_colors)
   VlnPlot(Gdt_cell_clusters, feature, group.by = 'orig.ident', cols = my_colors)
