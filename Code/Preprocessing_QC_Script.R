@@ -1,5 +1,5 @@
-##### Importing and Preprocessing Script
-##### Loading in the required packages #####
+##### Preprocessing and QC Script
+############################################## Loading in the required packages############################################## 
 suppressMessages({
   library(dior)
   library(Seurat)
@@ -28,43 +28,41 @@ suppressMessages({
 })
 set.seed(42)
 
-############################################# Performing SoupX Ambient RNA Removal #############################################
+############################################## Import data and prepare paths for QC outputs ############################################## 
 # Loading in the .h5 outputs from CellRanger 6.1.2
-setwd('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Cellranger_Output_Files/')
-SD1_counts <- Read10X_h5("SD1_filtered_feature_bc_matrix.h5")
-SD1_raw_matrix  <- Read10X_h5("SD1_raw_feature_bc_matrix.h5",use.names = T)
-SD2_counts <- Read10X_h5("SD2_filtered_feature_bc_matrix.h5")
-SD2_raw_matrix  <- Read10X_h5("SD2_raw_feature_bc_matrix.h5",use.names = T)
-SD3_counts <- Read10X_h5("SD3_filtered_feature_bc_matrix.h5")
-SD3_raw_matrix  <- Read10X_h5("SD3_raw_feature_bc_matrix.h5",use.names = T)
-SD4_counts <- Read10X_h5("SD4_filtered_feature_bc_matrix.h5")
-SD4_raw_matrix  <- Read10X_h5("SD4_raw_feature_bc_matrix.h5",use.names = T)
+cellranger_outputs_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset/Cellranger_Output_Files/'
 
-# Define datasets and names
-datasets <- list(SD1 = list(counts = SD1_counts, raw_matrix = SD1_raw_matrix),
-                 SD2 = list(counts = SD2_counts, raw_matrix = SD2_raw_matrix),
-                 SD3 = list(counts = SD3_counts, raw_matrix = SD3_raw_matrix),
-                 SD4 = list(counts = SD4_counts, raw_matrix = SD4_raw_matrix))
+SD1_counts <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD1_filtered_feature_bc_matrix.h5"))
+SD1_raw_matrix  <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD1_raw_feature_bc_matrix.h5"), use.names = T)
+SD2_counts <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD2_filtered_feature_bc_matrix.h5"))
+SD2_raw_matrix  <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD2_raw_feature_bc_matrix.h5") ,use.names = T)
+SD3_counts <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD3_filtered_feature_bc_matrix.h5"))
+SD3_raw_matrix  <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD3_raw_feature_bc_matrix.h5"), use.names = T)
+SD4_counts <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD4_filtered_feature_bc_matrix.h5"))
+SD4_raw_matrix  <- Read10X_h5(filename = file.path(cellranger_outputs_dir, "SD4_raw_feature_bc_matrix.h5"), use.names = T)
+
+# Define counts for each dataset and save outputs of SoupX
+datasets <- list(SD1 = list(counts = SD1_counts, raw_matrix = SD1_raw_matrix, out_folder = "soupXOutFolder_SD1/"),
+                 SD2 = list(counts = SD2_counts, raw_matrix = SD2_raw_matrix, out_folder = "soupXOutFolder_SD2/"),
+                 SD3 = list(counts = SD3_counts, raw_matrix = SD3_raw_matrix, out_folder = "soupXOutFolder_SD3/"),
+                 SD4 = list(counts = SD4_counts, raw_matrix = SD4_raw_matrix, out_folder = "soupXOutFolder_SD4/"))
 dataset_names <- names(datasets)
 
-# Base output directory
-output_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/QC_Figures/SoupX_Figures/Before_Removal/"
+# Define all output directories
+soupx_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/QC_Figures/SoupX_Figures/"
+doublet_finder_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/QC_Figures/Doublet_Finder_Figures/'
+data_dir <- '/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Dataset'
 
-output_dir <- "/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Test_Script/Importing_Preprocessing"
+# Set directory for all subsequent outputs of SoupX
+setwd(soupx_dir)
 
-srat <- CreateSeuratObject(counts = datasets$SD1$counts)
-soup.channel <- SoupChannel(srat$raw_matrix, srat$counts)
-
-# Loop over each dataset to view clustering prior to SoupX
+############################################## Visualize data prior to running QC pipeline ############################################## 
 for (i in seq_along(datasets)) {
   dataset_name <- dataset_names[i]
   dataset <- datasets[[dataset_name]]
   
   # Create Seurat object
   srat <- CreateSeuratObject(counts = dataset$counts)
-  
-  # Create SoupX object
-  soup.channel <- SoupChannel(dataset$raw_matrix, dataset$counts)
   
   # Process and visualize data prior to SoupX
   srat <- NormalizeData(srat, normalization.method = 'LogNormalize')
@@ -76,9 +74,6 @@ for (i in seq_along(datasets)) {
   srat <- FindNeighbors(srat, dims = 1:50, verbose = FALSE)
   srat <- FindClusters(srat, verbose = TRUE)
   srat[['percent.mt']] <- PercentageFeatureSet(srat, pattern = '^MT-')
-  
-  # Set output directory for this dataset
-  setwd(output_dir)
   
   # Save UMAP and tSNE plots
   pdf(file = paste0(dataset_name, "_UMAP_tSNE_before_SoupX.pdf"))
@@ -98,14 +93,7 @@ for (i in seq_along(datasets)) {
   dev.off()
 }
 
-# Define datasets and names
-datasets <- list(SD1 = list(counts = SD1_counts, raw_matrix = SD1_raw_matrix, out_folder = "soupXOutFolder_SD1/"),
-                 SD2 = list(counts = SD2_counts, raw_matrix = SD2_raw_matrix, out_folder = "soupXOutFolder_SD2/"),
-                 SD3 = list(counts = SD3_counts, raw_matrix = SD3_raw_matrix, out_folder = "soupXOutFolder_SD3/"),
-                 SD4 = list(counts = SD4_counts, raw_matrix = SD4_raw_matrix, out_folder = "soupXOutFolder_SD4/"))
-dataset_names <- names(datasets)
-
-# Loop through datasets to run the SoupX algorithm
+############################################## Performing ambient RNA removal using SoupX ############################################## 
 for (i in seq_along(datasets)) {
   dataset_name <- dataset_names[i]
   dataset <- datasets[[dataset_name]]
@@ -130,26 +118,29 @@ for (i in seq_along(datasets)) {
   adj.matrix <- adjustCounts(soup.channel, roundToInt = TRUE)
   
   # Save adjusted counts
-  DropletUtils:::write10xCounts(dataset$out_folder, adj.matrix)
+  DropletUtils:::write10xCounts(dataset$data_dir, adj.matrix)
   sratSoupx <- CreateSeuratObject(counts = adj.matrix)
   
-  # QC metrics comparison
-  srat@meta.data[] <- "Before_SoupX"
-  metadata <- srat@meta.data
-  colnames(metadata)[] <- "Ambient_RNA_Removal"
-  srat@meta.data <- metadata
+  srat@meta.data$Ambient_RNA_Removal <- "Before_SoupX"
+  sratSoupx@meta.data$Ambient_RNA_Removal <- "After_SoupX"
   
-  sratSoupx@meta.data[1] <- "After_SoupX"
-  metadata <- sratSoupx@meta.data
-  colnames(metadata)[1] <- "Ambient_RNA_Removal"
-  sratSoupx@meta.data <- metadata
+  # Ensure unique cell names before merging
+  srat <- RenameCells(srat, add.cell.id = "noAmb")
+  sratSoupx <- RenameCells(sratSoupx, add.cell.id = "Amb")
   
-  Merge <- merge(x = srat, y = sratSoupx, add.cell.ids = c("noAmb", "Amb"), project = dataset_name)
-  Merge[['percent.mt']] <- PercentageFeatureSet(Merge, pattern = "^MT-")
-  Idents(Merge) <- Merge@meta.data$Ambient_RNA_Removal
+  # Merge objects
+  Merge <- merge(x = srat, y = sratSoupx)
+  
+  # Ensure factor levels are set correctly
   Merge@meta.data$Ambient_RNA_Removal <- factor(Merge@meta.data$Ambient_RNA_Removal, levels = c("Before_SoupX", "After_SoupX"))
   
-  # Save QC plots
+  # Compute mitochondrial percentage
+  Merge[['percent.mt']] <- PercentageFeatureSet(Merge, pattern = "^MT-")
+  
+  # Set identities
+  Idents(Merge) <- Merge@meta.data$Ambient_RNA_Removal
+  
+  # Generate violin plots
   pdf(file = paste0("Counts_Comparison_", dataset_name, ".pdf"))
   print(VlnPlot(Merge, "nCount_RNA", y.max = 10000, group.by = "Ambient_RNA_Removal"))
   print(VlnPlot(Merge, "nFeature_RNA", y.max = 3000, group.by = "Ambient_RNA_Removal"))
@@ -179,7 +170,7 @@ for (i in seq_along(datasets)) {
   dev.off()
 }
 
-# Save outputs for each sample group
+############################################## Saving the outputs of SoupX ############################################## 
 for (i in seq_along(datasets)) {
   dataset_name <- dataset_names[i]
   output_folder <- datasets[[dataset_name]]$out_folder
@@ -188,12 +179,19 @@ for (i in seq_along(datasets)) {
   adj_data <- Read10X(output_folder)
   srat <- CreateSeuratObject(counts = adj_data, project = dataset_name)
   
-  saveRDS(srat, file = paste0(dataset_name, "_srat.rds"))
+  saveRDS(srat, file = file.path(data_dir, paste0(dataset_name, "_srat.rds")))
 }
 
-############################################# Performing Doublet Removal using DoubletFinder #############################################
+############################################## Performing doublet removal using DoubletFinder ############################################## 
 
-# Define datasets and their orig.ident values
+# Read in the data
+SD1_srat <- readRDS(file = file.path(data_dir, "SD1_srat.rds"))
+SD2_srat <- readRDS(file = file.path(data_dir, "SD2_srat.rds"))
+SD3_srat <- readRDS(file = file.path(data_dir, "SD3_srat.rds"))
+SD4_srat <- readRDS(file = file.path(data_dir, "SD4_srat.rds"))
+
+
+# Define datasets and their sample names
 datasets <- list(SD1_srat = "HC-unstim",
                  SD2_srat = "HC-stim",
                  SD3_srat = "SA-unstim",
@@ -227,7 +225,10 @@ table(all.samples@meta.data[["orig.ident"]])
 # Plot QC metrics prior to DoubletFinder
 all.samples$mitoPercent <- PercentageFeatureSet(all.samples, pattern = '^MT-')
 
-pdf('QC_plots_after_SoupX.pdf')
+# Set working directory for DoubletFinder outputs
+setwd(doublet_finder_dir)
+
+pdf('QC_plots_before_doubletfinder.pdf')
 print(VlnPlot(all.samples, features = c("nFeature_RNA", "nCount_RNA", "mitoPercent"), ncol = 3, pt.size = 0))
 plot1 <- FeatureScatter(all.samples, feature1 = "nCount_RNA", feature2 = "mitoPercent")
 plot2 <- FeatureScatter(all.samples, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
@@ -253,12 +254,12 @@ print(DimPlot(all.samples, reduction = 'umap', group.by = 'orig.ident'))
 dev.off()
 
 # Save the combined Seurat object
-saveRDS(all.samples, 'Combined_Shrimp_Allergy_before_filtering_and_DoubletFinder.rds')
+saveRDS(all.samples, file = file.path(data_dir, 'Combined_Shrimp_Allergy_before_filtering_and_DoubletFinder.rds'))
 
 # Read back the saved file if needed
-all.samples <- readRDS('Combined_Shrimp_Allergy_before_filtering_and_DoubletFinder.rds')
+all.samples <- readRDS(file = file.path(data_dir, 'Combined_Shrimp_Allergy_before_filtering_and_DoubletFinder.rds'))
 
-# Run the DoubletFinder algorithm to remove doublets from all four samples using for loop
+# Run the DoubletFinder algorithm to remove doublets from all four samples
 all.samples.split <- SplitObject(all.samples, split.by = "orig.ident") 
 for (i in 1:length(all.samples.split)) {
   print(paste0("orig.ident",i))
@@ -267,7 +268,7 @@ for (i in 1:length(all.samples.split)) {
   all.genes <- rownames(PBMC_sample)
   PBMC_sample    <- ScaleData(PBMC_sample, features = all.genes)
   PBMC_sample    <- RunPCA(PBMC_sample, npcs = 50, verbose = F)
-  #
+  
   stdv <- PBMC_sample[["pca"]]@stdev
   sum.stdv <- sum(PBMC_sample[["pca"]]@stdev)
   percent.stdv <- (stdv / sum.stdv) * 100
@@ -278,26 +279,25 @@ for (i in 1:length(all.samples.split)) {
               decreasing = T)[1] + 1
   min.pc <- min(co1, co2)
   min.pc
-  #
+  
   PBMC_sample <- RunUMAP(PBMC_sample, dims = 1:min.pc)
   PBMC_sample <- FindNeighbors(object = PBMC_sample, dims = 1:min.pc)              
   PBMC_sample <- FindClusters(object = PBMC_sample)
-  #
-  sweep.list <- paramSweep_v3(PBMC_sample, PCs = 1:min.pc, sct = F)
+  
+  sweep.list <- paramSweep(PBMC_sample, PCs = 1:min.pc, sct = F)
   sweep.stats <- summarizeSweep(sweep.list)
   bcmvn <- find.pK(sweep.stats)
-  #
+  
   bcmvn.max <- bcmvn[which.max(bcmvn$BCmetric),]
   optimal.pk <- bcmvn.max$pK
   optimal.pk <- as.numeric(levels(optimal.pk))[optimal.pk]
-  #
+  
   annotations <- PBMC_sample@meta.data$seurat_clusters
   homotypic.prop <- modelHomotypic(annotations) 
   nExp.poi <- round(0.035*nrow(PBMC_sample@meta.data)) ## Assuming 3.5% according to 10X recommendations
   nExp.poi.adj <- round(nExp.poi * (1 - homotypic.prop))
-  #
-  #
-  PBMC_sample <- doubletFinder_v3(seu = PBMC_sample, 
+  
+  PBMC_sample <- doubletFinder(seu = PBMC_sample, 
                                   PCs = 1:min.pc, 
                                   pK = optimal.pk,
                                   nExp = nExp.poi.adj,
@@ -306,27 +306,32 @@ for (i in 1:length(all.samples.split)) {
   colnames(metadata)[8] <- "doublet"
   PBMC_sample@meta.data <- metadata 
   
-  # subset and save
+  # Subset and save
+  table(PBMC_sample@meta.data$doublet)
   PBMC_sample.singlets <- subset(PBMC_sample, doublet == "Singlet")
   all.samples.split[[i]] <- PBMC_sample.singlets
   remove(PBMC_sample.singlets)
 }
 
-table(PBMC_sample@meta.data[["doublet"]])
+# Merge samples into a new list containing only singlets
+table(all.samples.split$`HC-stim`@meta.data$doublet)
 
-############################################# Merge Samples into a New List Containing Only Singlets #############################################
 PBMC_sample.singlets <- merge(
   x = all.samples.split[[1]],
   y = all.samples.split[-1],
   project = "shrimp_pbmc"
 )
-print(PBMC_sample.singlets)
 
 # Save and reload the singlets data
-saveRDS(PBMC_sample.singlets, 'Combined_after_ambient_and_doublet_removal.rds')
+saveRDS(file = file.path(data_dir, PBMC_sample.singlets, 'Combined_after_ambient_and_doublet_removal.rds'))
 PBMC_sample.singlets <- readRDS('Combined_after_ambient_and_doublet_removal.rds')
+PBMC_sample.singlets <- readRDS(data_dir, 'Combined_after_ambient_and_doublet_removal.rds')
 
-############################################# Cluster Data to Compare Before and After Doublet Removal #############################################
+# Cluster data to compare before and after doublet removal
+print(dim(PBMC_sample.singlets))  # Check cell count in object
+print(dim(PBMC_sample.singlets@meta.data))  # Check number of rows in metadata
+print(dim(PBMC_sample.singlets@assays$RNA@data))  # Check number of cells in expression data
+
 PBMC_sample.singlets <- PBMC_sample.singlets %>%
   NormalizeData(normalization.method = 'LogNormalize') %>%
   FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
@@ -344,7 +349,7 @@ DimPlot(PBMC_sample.singlets, reduction = 'umap', group.by = 'orig.ident')
 DimPlot(PBMC_sample.singlets, reduction = 'tsne', group.by = 'seurat_clusters')
 dev.off()
 
-##### Quality Control and Filtering #####
+############################################## Filtering low quality cells ############################################## 
 PBMC_sample.singlets$mitoPercent <- PercentageFeatureSet(PBMC_sample.singlets, pattern = '^MT-')
 
 # Set `orig.ident` and assign colors
@@ -377,7 +382,7 @@ print(plot1)
 print(plot2)
 dev.off()
 
-############################################# Filter low-quality cells #############################################
+# Filter low-quality cells
 PBMC_filtered <- subset(
   PBMC_sample.singlets, 
   subset = nCount_RNA > 500 & nCount_RNA < 20000 &
@@ -396,8 +401,7 @@ sceasy::convertFormat(
   outFile = 'PBMC_filtered.h5ad'
 )
 
-############################################# Apply Harmony Batch Correction for the Different Sample Groups #############################################
-# Plotting the results of the data before batch correction
+############################################## Apply harmony batch correction for the different sample groups ############################################## 
 PBMC_filtered <- PBMC_filtered %>%
   NormalizeData(normalization.method = 'LogNormalize') %>%
   FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
@@ -418,9 +422,6 @@ PBMC_filtered@meta.data$group.colors <- my_colors[as.integer(PBMC_filtered@meta.
 # Save and plot clustering results
 saveRDS(PBMC_filtered, 'Before_batch_correction_data.rds')
 
-# Directory to save the plots
-setwd('/Users/tylerjackson/OneDrive - Baylor College of Medicine/Hongjie_Li_Lab_Documents/PBMC_Data_Bin_Su/PBMC_Plots/Correct_PBMC_Analysis/Annotation_Plots/')
-
 pdf('Clustering_after_QC.pdf')
 DimPlot(PBMC_filtered, reduction = 'umap', group.by = 'seurat_clusters', pt.size = 0.1, label = TRUE)
 DimPlot(PBMC_filtered, reduction = 'umap', group.by = 'orig.ident', cols = my_colors, pt.size = 0.1)
@@ -429,7 +430,7 @@ dev.off()
 
 # Define a helper function
 create_feature_dotplots <- function(data, features, group.by, filename, point.size = 0.7) {
-  pdf(filename)
+  pdf(file = file.path(ann_dir, filename))
   FeaturePlot(data, features = features, pt.size = point.size, order = TRUE)
   plot_grid(
     DotPlot(data, features = features, group.by = group.by) + 
@@ -468,8 +469,17 @@ for (group in names(marker_groups)) {
   )
 }
 
-# Applying batch correction with Harmony
-PBMC_filtered_harmony <- PBMC_filtered %>%
+# Batch correction of sample groups with Harmony
+PBMC_filtered_harmony <- PBMC_filtered %>% 
+  RunHarmony(group.by.vars = c('orig.ident'), plot_convergence = TRUE)
+
+pdf(file = file.path(ann_dir, 'Harmony_batch_correction_plots.pdf'))
+DimPlot(PBMC_filtered_harmony, reduction = 'harmony', group.by = 'orig.ident')
+VlnPlot(PBMC_filtered_harmony, features = 'harmony_2', group.by = 'orig.ident')
+dev.off()
+
+# Clustering the result of Harmony
+PBMC_filtered_harmony <- PBMC_filtered_harmony %>%
   RunHarmony(group.by.vars = c('orig.ident'), plot_convergence = TRUE) %>%
   NormalizeData(normalization.method = "LogNormalize", scale.factor = 10000) %>%
   FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
@@ -479,13 +489,23 @@ PBMC_filtered_harmony <- PBMC_filtered %>%
   RunTSNE(reduction = 'harmony', dims = 1:50, n.neighbors = 15) %>%
   FindClusters()
 
-# Save Harmony-corrected clustering results
+# Save Harmony-corrected clustering plots
 pdf('PBMC_clustering_after_harmony_seurat.pdf')
 DimPlot(PBMC_filtered_harmony, reduction = 'umap', group.by = 'orig.ident')
 DimPlot(PBMC_filtered_harmony, reduction = 'umap', group.by = 'seurat_clusters', label = TRUE)
 DimPlot(PBMC_filtered_harmony, reduction = 'tsne', group.by = 'orig.ident')
 DimPlot(PBMC_filtered_harmony, reduction = 'tsne', group.by = 'seurat_clusters')
 dev.off()
+
+# Generate plots for each marker group
+for (group in names(marker_groups)) {
+  create_feature_dotplots(
+    PBMC_filtered_harmony, 
+    features = marker_groups[[group]], 
+    group.by = 'seurat_clusters', 
+    filename = paste0(group, '_markers.pdf')
+  )
+}
 
 # Saving the Harmony corrected output
 saveRDS(PBMC_filtered_harmony, 'PBMC_filtered_harmony.rds')
